@@ -3,7 +3,7 @@
 #include <ngx_http.h>
 
 //user include headers
-
+#include <ctype.h>
 //user config struct 
 typedef struct {
 	ngx_str_t		str_demo_arg1;
@@ -135,6 +135,7 @@ static ngx_int_t ngx_http_demo_init(ngx_conf_t *cf)
 static ngx_int_t ngx_http_demo_handler_output(ngx_http_request_t *r,char *data_buffer,int len,void *args)
 {
 	//prepare header
+	/*
 	ngx_table_elt_t *h = r->headers_out.content_length;
 	if (h == NULL)
 	{	
@@ -157,9 +158,10 @@ static ngx_int_t ngx_http_demo_handler_output(ngx_http_request_t *r,char *data_b
 		return NGX_HTTP_INTERNAL_SERVER_ERROR;
 	}
 	ngx_memcpy((char*)h->value.data,len_buf,h->value.len);
-	//h->hash = 1;
-	r->headers_out.status = NGX_HTTP_OK;
+	h->hash = 1;
 	r->headers_out.content_length = h;
+	*/
+	r->headers_out.status = NGX_HTTP_OK;
 	r->headers_out.content_length_n = len;
 	r->headers_out.content_type.len = sizeof("text/html") - 1;
 	r->headers_out.content_type.data = (u_char*)("text/html"); 
@@ -228,7 +230,7 @@ static ngx_int_t ngx_http_demo_delay_output(ngx_http_request_t * r, char *data_b
 static ngx_int_t ngx_http_demo_handler(ngx_http_request_t *r)
 {
 	
-	if(ngx_strncmp(r->uri.data,"/demo",5) != 0){
+	if(ngx_strncmp(r->uri.data,"/demo",r->uri.len) != 0){
 		return NGX_DECLINED;	
 	}
 
@@ -255,12 +257,16 @@ static ngx_int_t ngx_http_demo_handler(ngx_http_request_t *r)
 	if(r->args.len == 0){
 		return ngx_http_demo_handler_output(r,result,ngx_strlen(result),NULL);
 	}
-		
+	
 	char *delay_ptr = ngx_strstr(r->args.data,"delay=");
-	if(delay_ptr == NULL){
+	if(delay_ptr != (char*)r->args.data){
 		return NGX_HTTP_BAD_REQUEST;
 	}
 
+	int arg_value_len = r->args.len - strlen("delay=");	
+	char arg_buf [10] = "";
+	strncpy(arg_buf,delay_ptr+strlen("delay="),arg_value_len);
+	
 	int delay_flag = atoi(delay_ptr+ngx_strlen("delay="));
 	if(delay_flag == 1)
 	{
@@ -268,8 +274,12 @@ static ngx_int_t ngx_http_demo_handler(ngx_http_request_t *r)
 		r->write_event_handler = ngx_http_demo_delay;
 		ngx_add_timer(r->connection->write, (ngx_msec_t)DELAY_TIME);
 		return NGX_AGAIN;
-	}else if(delay_flag != 0){
-		sprintf(result+ngx_strlen(result),"Unknown delay value:%d\n",delay_flag);
+	}else if(delay_flag != 0 || arg_value_len != 1){
+		sprintf(result+ngx_strlen(result),"Unknown delay value:%s\n",arg_buf);
+	}else if(isdigit(arg_buf[0]) == 0){
+		sprintf(result+ngx_strlen(result),"Unknown delay value:%s\n",arg_buf);
+	}else{
+		sprintf(result+ngx_strlen(result),"ignore delay,value:%d\n",delay_flag);
 	}
 
 	return ngx_http_demo_handler_output(r,result,ngx_strlen(result),NULL);
@@ -287,7 +297,9 @@ static void ngx_http_demo_delay(ngx_http_request_t *r)
 	
 	char result[1024] = "";
 	sprintf(result,"This is nginx demo module\nResponse from delay,demo str:%s,demo int:%d\n",sscf->str_demo_arg1.data,(int)sscf->int_demo_arg2);
-	sprintf(result+ngx_strlen(result),"Client ip:%s\n",r->connection->addr_text.data);
+	sprintf(result+ngx_strlen(result),"Client ip:");
+	ngx_memcpy(result+ngx_strlen(result),r->connection->addr_text.data,r->connection->addr_text.len);
+	strcat(result,"\n");
 	
 	ngx_chain_t out;
 	ngx_buf_t   *out_buf;

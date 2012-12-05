@@ -1,10 +1,50 @@
 How to build:
+go into nginx director,replace path and execute,the commmand maybe like this:
+./configure --prefix=/webservice/server/nginx --with-http_stub_status_module --add-module=/home/chlaws/work/self/nginx_module_demo --without-http-cache --with-pcre=/home/chlaws/packet/pcre-8.12
+
+if you don't known argument means you can exec "./configure --help"
+
+after exectue configure ..
+run 'make'
+
+How to install:
+run 'make install'
 
 How to config:
+add two line to nginx.conf,you can change demo_str and demo_int value
+demo_str hello;
+demo_int 12345;
 
-How to use webbrower test:
+How to use test:
+1.use linux curl tool send url test,you will see result like below:
+execute cmd:
+curl "localhost/demo?delay=0"
+nginx response:
+This is nginx demo module
+demo str:hello,demo int:12345
+ignore delay,value:0
 
+execute cmd:
+curl "localhost/demo?delay=1"
+nginx response:
+This is nginx demo module
+Response from delay,demo str:hello,demo int:12345
+Client ip:127.0.0.1
 
+execute cmd:
+curl "localhost/demo?delay=a"
+nginx response:
+This is nginx demo module
+demo str:hello,demo int:12345
+Unknown delay value:a
 
+execute cmd:
+curl "localhost/demo"
+nginx response:
+This is nginx demo module
+demo str:hello,demo int:12345
+
+2.if you use webbrower,but not and nginx not in same machine
+you should replace "localhost" to nginx server ip
 
 
